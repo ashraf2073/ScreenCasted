@@ -25,7 +25,14 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # Finds settings.gradle.kts wherever the upload put it (repo root or a ScreenCast/ subfolder).
+      # Phone-friendly: if ScreenCast.zip was uploaded to the repo, unpack it here.
+      - name: Unpack project zip
+        run: |
+          for z in *.zip; do
+            if [ -f "$z" ]; then unzip -q -o "$z" -d _project; fi
+          done
+
+      # Finds settings.gradle.kts wherever it ended up (repo root, subfolder or unpacked zip).
       - name: Locate Gradle project
         id: proj
         run: |
