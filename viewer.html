@@ -1,0 +1,248 @@
+<!doctype html>
+<!-- Made par Ashraf -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScreenCast</title>
+<style>
+  /* System fonts only: the laptop may have no internet on a USB or Bluetooth link. */
+  :root {
+    --ink: #070b14; --ink-2: #0f1830; --mint: #7de3c3; --sky: #8ec9ff;
+    --glass: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
+    --text: #f2f6fb; --dim: rgba(242,246,251,.62); --bad: #ff8a80;
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); overflow: hidden; }
+  [hidden] { display: none !important; }
+
+  #gate {
+    position: fixed; inset: 0; display: grid; place-items: center; padding: 20px;
+    background:
+      radial-gradient(60vmax 60vmax at 0% 0%, rgba(125,227,195,.18), transparent 60%),
+      radial-gradient(55vmax 55vmax at 100% 100%, rgba(142,201,255,.15), transparent 60%),
+      linear-gradient(180deg, var(--ink), var(--ink-2));
+  }
+  .card {
+    width: min(420px, 100%); padding: 28px; border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+    border: 1px solid var(--edge); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    display: grid; gap: 16px;
+  }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -.01em; }
+  p  { margin: 0; color: var(--dim); line-height: 1.45; }
+  label.pin { display: grid; gap: 8px; font-weight: 600; }
+  input[type=text] {
+    font: 600 32px ui-monospace, Consolas, monospace; letter-spacing: .3em; text-align: center;
+    padding: 12px; border-radius: 14px; border: 1px solid var(--edge);
+    background: rgba(0,0,0,.35); color: var(--text); outline: none;
+  }
+  input[type=text]:focus-visible, button:focus-visible, select:focus-visible, input[type=range]:focus-visible {
+    outline: 2px solid var(--sky); outline-offset: 2px;
+  }
+  .consent { display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; font-size: 14px; color: var(--dim); }
+  .consent input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--mint); flex: none; }
+  button.primary {
+    padding: 14px; border: 0; border-radius: 14px; font-family: inherit; font-weight: 700; font-size: 16px; cursor: pointer;
+    background: var(--mint); color: #04130e;
+  }
+  button.primary:disabled { opacity: .35; cursor: not-allowed; }
+  #err { color: var(--bad); min-height: 1.2em; font-size: 14px; }
+  .credit { text-align: center; font-size: 12px; color: rgba(242,246,251,.45); }
+
+  #stage { position: fixed; inset: 0; background: #000; display: grid; place-items: center; }
+  #screen { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+
+  #bar {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center;
+    padding: 10px 16px; max-width: calc(100vw - 24px); border-radius: 18px;
+    background: rgba(10,16,30,.62); border: 1px solid var(--edge);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    transition: opacity .25s;
+  }
+  #stage.idle #bar { opacity: 0; pointer-events: none; }
+  #stage.idle { cursor: none; }
+  #bar label { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--dim); }
+  select, #bar button {
+    font-family: inherit; font-weight: 600; font-size: 13px; color: var(--text); background: var(--glass);
+    border: 1px solid var(--edge); border-radius: 10px; padding: 7px 10px; cursor: pointer;
+  }
+  select option { color: #000; }
+  input[type=range] { width: 120px; accent-color: var(--mint); }
+  #qv { min-width: 2ch; color: var(--text); font-variant-numeric: tabular-nums; }
+  #stat { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 12ch; }
+  #bar .credit { width: 100%; }
+
+  #banner {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    padding: 8px 14px; border-radius: 12px; background: rgba(10,16,30,.8);
+    border: 1px solid var(--edge); font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<section id="gate">
+  <div class="card">
+    <div>
+      <h1>ScreenCast</h1>
+      <p>Enter the 6-digit PIN shown on the phone to watch its screen.</p>
+    </div>
+    <label class="pin">Session PIN
+      <input id="pin" type="text" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="000000" aria-describedby="err">
+    </label>
+    <label class="consent">
+      <input id="consent" type="checkbox">
+      <span>I am the owner of this phone, or I have the owner's permission to view its screen. I understand it may show private content.</span>
+    </label>
+    <button id="go" class="primary" disabled>Watch screen</button>
+    <div id="err" role="alert"></div>
+    <div class="credit">Made par Ashraf</div>
+  </div>
+</section>
+
+<section id="stage" hidden>
+  <canvas id="screen" width="16" height="9"></canvas>
+  <div id="banner" hidden></div>
+  <div id="bar">
+    <label>Resolution
+      <select id="res">
+        <option value="1920">Full HD (1920)</option>
+        <option value="1280">HD (1280)</option>
+        <option value="854">SD (854)</option>
+        <option value="640">Low (640)</option>
+        <option value="480">Minimum (480)</option>
+      </select>
+    </label>
+    <label>Quality <input id="q" type="range" min="10" max="95" step="5" value="60"><span id="qv">60</span></label>
+    <label>Frame rate
+      <select id="fps">
+        <option value="60">60</option><option value="30">30</option>
+        <option value="15">15</option><option value="10">10</option>
+      </select>
+    </label>
+    <button id="mute" hidden>Sound on</button>
+    <button id="full">Fullscreen</button>
+    <span id="stat">connecting</span>
+    <div class="credit">Made par Ashraf</div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('screen'), ctx = cv.getContext('2d');
+  let ws = null, pin = '', rate = 44100, audioCtx = null, nextT = 0, muted = true;
+  let decoding = false, pending = null, frames = 0, bytes = 0, retry = null, qTimer = null, idleTimer = null;
+
+  // ---- gate ----------------------------------------------------------------------------
+  const digits = () => $('pin').value.replace(/\D/g, '');
+  const validate = () => { $('go').disabled = !($('consent').checked && digits().length === 6); };
+  $('pin').addEventListener('input', validate);
+  $('consent').addEventListener('change', validate);
+  $('pin').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('go').disabled) $('go').click(); });
+  $('go').addEventListener('click', () => {
+    pin = digits(); $('err').textContent = '';
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+    connect();
+  });
+
+  function showGate(msg) {
+    $('stage').hidden = true; $('gate').hidden = false; $('err').textContent = msg || '';
+  }
+
+  // ---- connection ----------------------------------------------------------------------
+  function connect() {
+    clearTimeout(retry);
+    const scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    ws = new WebSocket(scheme + location.host + '/ws?pin=' + encodeURIComponent(pin));
+    ws.binaryType = 'arraybuffer';
+    ws.onmessage = e => {
+      if (typeof e.data === 'string') return onMeta(JSON.parse(e.data));
+      const type = new Uint8Array(e.data, 0, 1)[0];
+      bytes += e.data.byteLength;
+      if (type === 1) onVideo(e.data); else if (type === 2) onAudio(e.data);
+    };
+    ws.onclose = e => {
+      if (e.code === 1008) return showGate('That PIN was not accepted, or there were too many attempts. Wait a minute and try again.');
+      if (!$('stage').hidden) { banner('Connection lost. Reconnecting…'); retry = setTimeout(connect, 1500); }
+      else showGate('Could not reach the phone. Check that mirroring is still running.');
+    };
+  }
+
+  function onMeta(m) {
+    if (m.type !== 'meta') return;
+    rate = m.rate || rate;
+    $('gate').hidden = true; $('stage').hidden = false; banner('');
+    setIfPresent($('res'), m.maxEdge); setIfPresent($('fps'), m.fps);
+    $('q').value = m.quality; $('qv').textContent = m.quality;
+    $('mute').hidden = !m.audio || !audioCtx;
+    wake();
+  }
+  function setIfPresent(sel, v) { if ([...sel.options].some(o => +o.value === v)) sel.value = v; }
+  function banner(t) { $('banner').textContent = t; $('banner').hidden = !t; }
+
+  // ---- video: decode only the newest frame, drop the rest ------------------------------
+  function onVideo(buf) { if (decoding) { pending = buf; return; } decode(buf); }
+  async function decode(buf) {
+    decoding = true;
+    try {
+      const bmp = await createImageBitmap(new Blob([new Uint8Array(buf, 1)], { type: 'image/jpeg' }));
+      if (cv.width !== bmp.width || cv.height !== bmp.height) { cv.width = bmp.width; cv.height = bmp.height; }
+      ctx.drawImage(bmp, 0, 0); bmp.close(); frames++;
+    } catch (e) { /* corrupt frame: skip */ }
+    decoding = false;
+    if (pending) { const p = pending; pending = null; decode(p); }
+  }
+
+  // ---- audio: 16-bit stereo PCM scheduled back-to-back ---------------------------------
+  function onAudio(buf) {
+    if (!audioCtx || muted) return;
+    const pcm = new Int16Array(buf.slice(1));           // copy: Int16Array needs 2-byte alignment
+    const n = pcm.length >> 1;
+    const ab = audioCtx.createBuffer(2, n, rate);
+    const L = ab.getChannelData(0), R = ab.getChannelData(1);
+    for (let i = 0; i < n; i++) { L[i] = pcm[2 * i] / 32768; R[i] = pcm[2 * i + 1] / 32768; }
+    const src = audioCtx.createBufferSource(); src.buffer = ab; src.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    if (nextT < now + 0.02) nextT = now + 0.08;         // underrun: re-buffer slightly
+    if (nextT > now + 0.6) return;                      // too far behind real time: drop to stay in sync
+    src.start(nextT); nextT += ab.duration;
+  }
+  $('mute').addEventListener('click', () => {
+    muted = !muted; $('mute').textContent = muted ? 'Sound on' : 'Sound off';
+    if (!muted && audioCtx) audioCtx.resume();
+  });
+
+  // ---- controls ------------------------------------------------------------------------
+  function sendCfg() {
+    if (ws && ws.readyState === 1)
+      ws.send(JSON.stringify({ type: 'config', maxEdge: +$('res').value, quality: +$('q').value, fps: +$('fps').value }));
+  }
+  $('res').addEventListener('change', sendCfg);
+  $('fps').addEventListener('change', sendCfg);
+  $('q').addEventListener('input', () => {
+    $('qv').textContent = $('q').value; clearTimeout(qTimer); qTimer = setTimeout(sendCfg, 250);
+  });
+  const toggleFs = () => document.fullscreenElement ? document.exitFullscreen() : $('stage').requestFullscreen();
+  $('full').addEventListener('click', toggleFs);
+  cv.addEventListener('dblclick', toggleFs);
+  addEventListener('keydown', e => { if (e.key === 'f' && !$('stage').hidden) toggleFs(); });
+
+  // Hide the toolbar when the pointer rests, show it again on movement.
+  function wake() {
+    $('stage').classList.remove('idle'); clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => $('stage').classList.add('idle'), 2800);
+  }
+  addEventListener('mousemove', wake); addEventListener('touchstart', wake);
+
+  setInterval(() => {
+    $('stat').textContent = frames + ' fps · ' + (bytes * 8 / 1e6).toFixed(1) + ' Mbit/s';
+    frames = 0; bytes = 0;
+  }, 1000);
+})();
+</script>
+</body>
+</html>

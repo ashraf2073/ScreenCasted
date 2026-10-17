@@ -1,0 +1,16 @@
+# Made par Ashraf
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Never commit signing keys or built APKs
+*.jks
+*.keystore
+*.apk
+*.aab
